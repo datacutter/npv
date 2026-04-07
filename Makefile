@@ -1,4 +1,4 @@
-.PHONY: init up down restart logs status render add-user revoke-user list-users client-config stats healthcheck regenerate-secrets
+.PHONY: init up down restart logs status render add-user revoke-user list-users client-config stats healthcheck regenerate-secrets firewall-apply firewall-reset firewall-status
 
 init:
 	@bash scripts/init.sh
@@ -17,6 +17,15 @@ logs:
 
 status:
 	docker-compose ps
+
+firewall-apply:
+	@bash scripts/apply-firewall.sh
+
+firewall-reset:
+	@bash scripts/reset-firewall.sh
+
+firewall-status:
+	@sudo iptables -nL VPN-FIREWALL -v || echo "Chain VPN-FIREWALL does not exist."
 
 render:
 	@bash scripts/render-config.sh

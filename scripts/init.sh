@@ -36,4 +36,12 @@ bash scripts/generate-secrets.sh
 echo "[*] Step 2: Rendering Config ..."
 bash scripts/render-config.sh
 
+# Apply Firewall Rules
+echo "[*] Step 3: Configuring Firewall ..."
+if sudo iptables -h >/dev/null 2>&1; then
+    bash scripts/apply-firewall.sh
+else
+    echo "[!] Iptables not found or no sudo privileges. Skipping firewall setup."
+fi
+
 echo "[+] Initialization complete. You can now run: make up"
