@@ -1,7 +1,8 @@
 .env
 *.env
 
-data/
+data/*
+!data/blocked_domains.txt
 xray/config.json
 
 .DS_Store
