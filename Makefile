@@ -1,8 +1,7 @@
-.PHONY: init up down restart logs vless wg status
+.PHONY: init up down restart logs status render add-user revoke-user list-users client-config stats healthcheck regenerate-secrets
 
 init:
-	@chmod +x scripts/*.sh
-	@./scripts/init.sh
+	@bash scripts/init.sh
 
 up:
 	docker-compose up -d
@@ -16,13 +15,29 @@ restart:
 logs:
 	docker-compose logs -f
 
-vless:
-	@chmod +x scripts/get-vless-link.sh
-	@./scripts/get-vless-link.sh
-
-wg:
-	@chmod +x scripts/get-wg-client.sh
-	@./scripts/get-wg-client.sh $(client)
-
 status:
 	docker-compose ps
+
+render:
+	@bash scripts/render-config.sh
+
+add-user:
+	@bash scripts/add-user.sh $(USER)
+
+revoke-user:
+	@bash scripts/revoke-user.sh $(USER)
+
+list-users:
+	@bash scripts/list-users.sh
+
+client-config:
+	@bash scripts/print-client-config.sh $(USER)
+
+stats:
+	@bash scripts/stats.sh
+
+healthcheck:
+	@bash scripts/healthcheck.sh
+
+regenerate-secrets:
+	@bash scripts/generate-secrets.sh --force

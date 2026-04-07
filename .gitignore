@@ -1,19 +1,8 @@
-# Env
 .env
 *.env
 
-# Keys and config data
-keys/
 data/
-xray/
-wireguard/
+xray/config.json
 
-# Ignore everything inside wireguard/ exception for .keep if needed
-# !wireguard/.keep
-
-# Generated Client Configs
-clients/
-
-# OS generated files
 .DS_Store
 Thumbs.db
