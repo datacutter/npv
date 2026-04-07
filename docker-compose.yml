@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  xray:
+    image: teddysun/xray:latest
+    container_name: xray
+    restart: unless-stopped
+    ports:
+      - "${XRAY_PORT}:443/tcp"
+    volumes:
+      - ./xray/config.json:/etc/xray/config.json:ro
+      # Empty data dir for potential xray logs/geo ip
+      - ./xray/data:/etc/xray/data
+    environment:
+      - TZ=UTC
+    healthcheck:
+      # Simple healthcheck to verify Xray binary and correct config format
+      test: ["CMD-SHELL", "/usr/bin/xray run -test -config /etc/xray/config.json || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  wireguard:
+    image: lscr.io/linuxserver/wireguard:latest
+    container_name: wireguard
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+      - PEERS=0 # Managed manually
+      - SERVERURL=${SERVER_IP} 
+      - SERVERPORT=${WG_PORT}
+    volumes:
+      - ./wireguard/config:/config
+      - /lib/modules:/lib/modules:ro
+    ports:
+      - "${WG_PORT}:51820/udp"
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+      - net.ipv6.conf.all.disable_ipv6=0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wg", "show"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
