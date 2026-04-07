@@ -27,6 +27,15 @@ firewall-reset:
 firewall-status:
 	@sudo iptables -nL VPN-FIREWALL -v || echo "Chain VPN-FIREWALL does not exist."
 
+blocklist-apply:
+	@bash scripts/apply-domain-blocklist.sh
+
+blocklist-reset:
+	@bash scripts/reset-domain-blocklist.sh
+
+blocklist-status:
+	@jq '.routing.rules[] | select(.tag == "domain-blocklist") | .domain' xray/config.json || echo "No blocklist rule found in config.json"
+
 render:
 	@bash scripts/render-config.sh
 

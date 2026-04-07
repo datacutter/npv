@@ -41,13 +41,20 @@ if docker run --rm -it -v "$(pwd)/xray:/etc/xray:ro" teddysun/xray xray run -tes
     echo "[+] Config is valid."
 else
     echo "[-] Config validation FAILED. Rolling back might be needed."
-    # For now we won't strictly exit, just warn.
 fi
 
-# Reload Xray if it's running
-if docker ps --format '{{.Names}}' | grep -Eq "^xray$"; then
-    echo "[*] Restarting Xray wrapper to apply new config..."
-    docker restart xray
+# Apply Domain Blocklist if enabled (this modifies config.json inside)
+echo "[*] Injecting Domain Blocklist..."
+bash scripts/apply-domain-blocklist.sh
+
+# Note: apply-domain-blocklist.sh restarts docker container on its own,
+# so we don't need a double restart here.
+# But just in case blocklist is disabled, we restart it manually.
+if [ "${ENABLE_DOMAIN_BLOCKLIST:-false}" != "true" ]; then
+    if docker ps --format '{{.Names}}' | grep -Eq "^xray$"; then
+        echo "[*] Restarting Xray wrapper to apply new config..."
+        docker restart xray >/dev/null
+    fi
 fi
 
 echo "[+] Render complete."
