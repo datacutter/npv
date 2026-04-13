@@ -37,7 +37,7 @@ jq --argjson clients "$ACTIVE_CLIENTS" \
     "$TEMPLATE" > "$TARGET"
 
 echo "[*] Validating Xray config..."
-if docker run --rm -it -v "$(pwd)/xray:/etc/xray:ro" teddysun/xray xray run -test -confdir /etc/xray >/dev/null 2>&1; then
+if docker run --rm -v "$(pwd)/xray:/etc/xray:ro" teddysun/xray xray run -test -config /etc/xray/config.json >/dev/null 2>&1; then
     echo "[+] Config is valid."
 else
     echo "[-] Config validation FAILED. Rolling back might be needed."
