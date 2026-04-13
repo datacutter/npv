@@ -22,9 +22,25 @@ fi
 # Xray Keys
 if [ -z "${XRAY_PRIVATE_KEY:-}" ] || [ "$FORCE" -eq 1 ]; then
     echo "[*] Generating Reality Keys..."
-    KEYS=$(docker run --rm teddysun/xray xray x25519)
-    PRIV=$(echo "$KEYS" | grep "Private key" | awk '{print $3}')
-    PUB=$(echo "$KEYS" | grep "Public key" | awk '{print $3}')
+    
+    # We use empty entrypoint to ensure the command is found in PATH
+    KEYS=$(docker run --rm --network none --entrypoint "" teddysun/xray xray x25519) || {
+        echo "Error: Failed to generate Xray keys."
+        exit 1
+    }
+
+    # Format: PrivateKey: <key>
+    PRIV=$(echo "$KEYS" | grep "PrivateKey:" | awk '{print $2}' | tr -d '\r')
+    # Format: Password (PublicKey): <key>
+    PUB=$(echo "$KEYS" | grep "PublicKey):" | awk '{print $3}' | tr -d '\r')
+
+    if [ -z "$PRIV" ] || [ -z "$PUB" ]; then
+        echo "Error: Could not parse Xray keys from output. Unexpected format."
+        echo "Full output was:"
+        echo "$KEYS"
+        exit 1
+    fi
+
     sed -i "s|^XRAY_PRIVATE_KEY=.*|XRAY_PRIVATE_KEY=$PRIV|g" .env
     sed -i "s|^XRAY_PUBLIC_KEY=.*|XRAY_PUBLIC_KEY=$PUB|g" .env
     UPDATE_ENV=1
