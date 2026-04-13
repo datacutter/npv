@@ -4,19 +4,19 @@ init:
 	@bash scripts/init.sh
 
 up:
-	docker-compose up -d
+	docker compose up -d
 
 down:
-	docker-compose down
+	docker compose down
 
 restart:
-	docker-compose restart
+	docker compose restart
 
 logs:
-	docker-compose logs -f
+	docker compose logs -f
 
 status:
-	docker-compose ps
+	docker compose ps
 
 firewall-apply:
 	@bash scripts/apply-firewall.sh
