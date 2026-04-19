@@ -1,7 +1,7 @@
 
 services:
   xray:
-    image: teddysun/xray:latest
+    image: "${XRAY_IMAGE:-teddysun/xray:26.4.15}"
     container_name: xray
     restart: unless-stopped
     ports:

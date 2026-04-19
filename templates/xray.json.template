@@ -1,7 +1,6 @@
 {
   "log": {
-    "loglevel": "warning",
-    "access": "/etc/xray/data/access.log"
+    "loglevel": "warning"
   },
   "inbounds": [
     {

@@ -1,7 +1,6 @@
 {
   "log": {
-    "loglevel": "warning",
-    "access": "/etc/xray/data/access.log"
+    "loglevel": "warning"
   },
   "stats": {},
   "api": {
@@ -18,8 +17,8 @@
       }
     },
     "system": {
-      "statsInboundUplink": true,
-      "statsInboundDownlink": true
+      "statsInboundUplink": false,
+      "statsInboundDownlink": false
     }
   },
   "inbounds": [

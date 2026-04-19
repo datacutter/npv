@@ -4,6 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 source .env
+XRAY_IMAGE=${XRAY_IMAGE:-teddysun/xray:26.4.15}
 
 TEMPLATE="xray/config.template.json"
 TARGET="xray/config.json"
@@ -37,7 +38,7 @@ jq --argjson clients "$ACTIVE_CLIENTS" \
     "$TEMPLATE" > "$TARGET"
 
 echo "[*] Validating Xray config..."
-if docker run --rm -v "$(pwd)/xray:/etc/xray:ro" teddysun/xray xray run -test -config /etc/xray/config.json >/dev/null 2>&1; then
+if docker run --rm -v "$(pwd)/xray:/etc/xray:ro" "$XRAY_IMAGE" xray run -test -config /etc/xray/config.json >/dev/null 2>&1; then
     echo "[+] Config is valid."
 else
     echo "[-] Config validation FAILED. Rolling back might be needed."

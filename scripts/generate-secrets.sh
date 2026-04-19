@@ -9,6 +9,7 @@ if [ "${1:-}" == "--force" ]; then
 fi
 
 source .env
+XRAY_IMAGE=${XRAY_IMAGE:-teddysun/xray:26.4.15}
 
 UPDATE_ENV=0
 
@@ -24,7 +25,7 @@ if [ -z "${XRAY_PRIVATE_KEY:-}" ] || [ "$FORCE" -eq 1 ]; then
     echo "[*] Generating Reality Keys..."
     
     # We use empty entrypoint to ensure the command is found in PATH
-    KEYS=$(docker run --rm --network none --entrypoint "" teddysun/xray xray x25519) || {
+    KEYS=$(docker run --rm --network none --entrypoint "" "$XRAY_IMAGE" xray x25519) || {
         echo "Error: Failed to generate Xray keys."
         exit 1
     }
