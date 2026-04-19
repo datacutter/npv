@@ -11,6 +11,10 @@ fi
 echo "[*] Querying Xray API (10085)..."
 STATS_JSON=$(docker exec xray xray api statsquery -server=127.0.0.1:10085)
 
+# Some Xray builds may return null/empty stats for users without traffic yet.
+# Normalize to a safe array to avoid jq runtime errors.
+STAT_ENTRIES=$(echo "$STATS_JSON" | jq -c '(.stat // .stats // [])')
+
 echo ""
 printf "%-20s %-15s %-15s %-15s\n" "USERNAME" "UPLINK" "DOWNLINK" "TOTAL"
 echo "----------------------------------------------------------------------"
@@ -41,8 +45,8 @@ if [ ! -f "$USERS_FILE" ]; then
 fi
 
 jq -r '.[] | .username' "$USERS_FILE" | while read -r username; do
-    up=$(echo "$STATS_JSON" | jq -r ".stat[] | select(.name == \"user>>>${username}>>>traffic>>>uplink\") | .value")
-    down=$(echo "$STATS_JSON" | jq -r ".stat[] | select(.name == \"user>>>${username}>>>traffic>>>downlink\") | .value")
+    up=$(echo "$STAT_ENTRIES" | jq -r ".[] | select(.name == \"user>>>${username}>>>traffic>>>uplink\") | .value")
+    down=$(echo "$STAT_ENTRIES" | jq -r ".[] | select(.name == \"user>>>${username}>>>traffic>>>downlink\") | .value")
     
     [ -z "$up" ] && up=0
     [ -z "$down" ] && down=0
