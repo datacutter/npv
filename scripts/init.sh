@@ -36,8 +36,17 @@ bash scripts/generate-secrets.sh
 echo "[*] Step 2: Rendering Config ..."
 bash scripts/render-config.sh
 
+# Kernel Tuning (BBR + TCP buffers)
+echo "[*] Step 3: Optimizing Kernel Network Parameters ..."
+if [ "$(id -u)" -eq 0 ]; then
+    bash scripts/tune-kernel.sh
+else
+    echo "[!] Not running as root. Skipping kernel tuning."
+    echo "    Run manually: sudo bash scripts/tune-kernel.sh"
+fi
+
 # Apply Firewall Rules
-echo "[*] Step 3: Configuring Firewall ..."
+echo "[*] Step 4: Configuring Firewall ..."
 if sudo iptables -h >/dev/null 2>&1; then
     bash scripts/apply-firewall.sh
 else

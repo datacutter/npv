@@ -2,6 +2,13 @@
   "log": {
     "loglevel": "warning"
   },
+  "dns": {
+    "queryStrategy": "UseIPv4",
+    "servers": [
+      "1.1.1.1",
+      "8.8.8.8"
+    ]
+  },
   "stats": {},
   "api": {
     "tag": "api",
@@ -57,13 +64,17 @@
       },
       "sniffing": {
         "enabled": true,
-        "destOverride": ["http", "tls", "quic"]
+        "destOverride": ["http", "tls", "quic"],
+        "routeOnly": true
       }
     }
   ],
   "outbounds": [
     {
       "protocol": "freedom",
+      "settings": {
+        "domainStrategy": "AsIs"
+      },
       "tag": "direct"
     },
     {
@@ -72,6 +83,7 @@
     }
   ],
   "routing": {
+    "domainStrategy": "AsIs",
     "rules": [
       {
         "inboundTag": ["api"],

@@ -1,4 +1,4 @@
-.PHONY: init up down restart logs status render add-user revoke-user list-users client-config stats healthcheck regenerate-secrets firewall-apply firewall-reset firewall-status
+.PHONY: init up down restart logs status render add-user revoke-user list-users client-config stats healthcheck regenerate-secrets firewall-apply firewall-reset firewall-status tune-kernel
 
 init:
 	@bash scripts/init.sh
@@ -59,3 +59,6 @@ healthcheck:
 
 regenerate-secrets:
 	@bash scripts/generate-secrets.sh --force
+
+tune-kernel:
+	@sudo bash scripts/tune-kernel.sh
