@@ -3,13 +3,26 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+XRAY_CONTAINER_IMAGE=""
+xray_exec() {
+    if [ -z "$XRAY_CONTAINER_IMAGE" ]; then
+        XRAY_CONTAINER_IMAGE=$(docker inspect -f '{{.Config.Image}}' xray 2>/dev/null || true)
+    fi
+
+    if [[ "$XRAY_CONTAINER_IMAGE" == ghcr.io/xtls/xray-core:* ]]; then
+        docker exec xray /usr/local/bin/xray "$@"
+    else
+        docker exec xray xray "$@"
+    fi
+}
+
 if ! docker ps --format '{{.Names}}' | grep -Eq "^xray$"; then
     echo "Xray container is not running!"
     exit 1
 fi
 
 echo "[*] Querying Xray API (10085)..."
-STATS_JSON=$(docker exec xray xray api statsquery -server=127.0.0.1:10085)
+STATS_JSON=$(xray_exec api statsquery -server=127.0.0.1:10085)
 
 # Some Xray builds may return null/empty stats for users without traffic yet.
 # Normalize to a safe array to avoid jq runtime errors.

@@ -4,7 +4,15 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 source .env
-XRAY_IMAGE=${XRAY_IMAGE:-teddysun/xray:26.4.15}
+XRAY_IMAGE=${XRAY_IMAGE:-ghcr.io/xtls/xray-core:26.5.3}
+
+validate_xray_config() {
+    if [[ "$XRAY_IMAGE" == ghcr.io/xtls/xray-core:* ]]; then
+        docker run --rm -v "$(pwd)/xray:/etc/xray:ro" "$XRAY_IMAGE" run -test -config /etc/xray/config.json >/dev/null 2>&1
+    else
+        docker run --rm -v "$(pwd)/xray:/etc/xray:ro" "$XRAY_IMAGE" xray run -test -config /etc/xray/config.json >/dev/null 2>&1
+    fi
+}
 
 TEMPLATE="xray/config.template.json"
 TARGET="xray/config.json"
@@ -30,15 +38,21 @@ jq --argjson clients "$ACTIVE_CLIENTS" \
    --arg serverName "$REALITY_SERVER_NAME" \
    --arg privateKey "$XRAY_PRIVATE_KEY" \
    --arg shortId "$XRAY_SHORT_ID" \
-   '.inbounds[1].settings.clients = $clients | 
-    .inbounds[1].streamSettings.realitySettings.dest = $dest |
-    .inbounds[1].streamSettings.realitySettings.serverNames = [$serverName] |
-    .inbounds[1].streamSettings.realitySettings.privateKey = $privateKey |
-    .inbounds[1].streamSettings.realitySettings.shortIds = [$shortId]' \
+   '.inbounds |= map(
+      if .protocol == "vless" and (.streamSettings.security // "") == "reality" then
+        .settings.clients = $clients |
+        .streamSettings.realitySettings.dest = $dest |
+        .streamSettings.realitySettings.serverNames = [$serverName] |
+        .streamSettings.realitySettings.privateKey = $privateKey |
+        .streamSettings.realitySettings.shortIds = [$shortId]
+      else
+        .
+      end
+    )' \
     "$TEMPLATE" > "$TARGET"
 
 echo "[*] Validating Xray config..."
-if docker run --rm -v "$(pwd)/xray:/etc/xray:ro" "$XRAY_IMAGE" xray run -test -config /etc/xray/config.json >/dev/null 2>&1; then
+if validate_xray_config; then
     echo "[+] Config is valid."
 else
     echo "[-] Config validation FAILED. Rolling back might be needed."
