@@ -3,8 +3,20 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-TARGET_IMAGE="ghcr.io/xtls/xray-core:26.5.3"
+TARGET_IMAGE="ghcr.io/xtls/xray-core:26.6.1"
 TARGET_ALT_PORT="8443"
+
+ensure_env_default() {
+    local key=$1
+    local value=$2
+
+    if grep -q "^${key}=" .env; then
+        return
+    fi
+
+    printf '\n%s=%s\n' "$key" "$value" >> .env
+    echo "[+] $key added to .env"
+}
 
 if [ ! -f ".env" ]; then
     echo "Error: .env not found. Run 'make init' first."
@@ -43,6 +55,9 @@ else
     echo "[+] XRAY_PORT_ALT added to .env"
 fi
 
+ensure_env_default REALITY_FINGERPRINT "chrome"
+ensure_env_default REALITY_SPIDER_X "/"
+
 echo "[*] Re-rendering Xray config..."
 bash scripts/render-config.sh
 
@@ -58,3 +73,6 @@ bash scripts/healthcheck.sh
 echo ""
 echo "[!] Reminder: update client apps to the latest available release on each device."
 echo "    For Reality-based links this is important on Android/iPhone clients too."
+echo "[!] If the current server is already blocked in Russia, run:"
+echo "    make rotate-reality DEST=www.microsoft.com:443 SNI=www.microsoft.com"
+echo "    Then re-issue links with: make client-config USER=<username>"

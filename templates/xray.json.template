@@ -7,12 +7,7 @@
       "port": 443,
       "protocol": "vless",
       "settings": {
-        "clients": [
-          {
-            "id": "${XRAY_UUID}",
-            "flow": "xtls-rprx-vision"
-          }
-        ],
+        "clients": [],
         "decryption": "none"
       },
       "streamSettings": {
@@ -20,7 +15,7 @@
         "security": "reality",
         "realitySettings": {
           "show": false,
-          "dest": "${REALITY_DEST}",
+          "target": "${REALITY_DEST}",
           "xver": 0,
           "serverNames": [
             "${REALITY_SERVER_NAME}"

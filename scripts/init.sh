@@ -32,12 +32,16 @@ fi
 echo "[*] Step 1: Generating Secrets ..."
 bash scripts/generate-secrets.sh
 
+# Validate Reality target before rendering final config
+echo "[*] Step 2: Checking Reality Target ..."
+bash scripts/check-reality-target.sh
+
 # Render Final Config
-echo "[*] Step 2: Rendering Config ..."
+echo "[*] Step 3: Rendering Config ..."
 bash scripts/render-config.sh
 
 # Kernel Tuning (BBR + TCP buffers)
-echo "[*] Step 3: Optimizing Kernel Network Parameters ..."
+echo "[*] Step 4: Optimizing Kernel Network Parameters ..."
 if [ "$(id -u)" -eq 0 ]; then
     bash scripts/tune-kernel.sh
 else
@@ -46,7 +50,7 @@ else
 fi
 
 # Apply Firewall Rules
-echo "[*] Step 4: Configuring Firewall ..."
+echo "[*] Step 5: Configuring Firewall ..."
 if sudo iptables -h >/dev/null 2>&1; then
     bash scripts/apply-firewall.sh
 else

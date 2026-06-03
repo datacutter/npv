@@ -1,7 +1,7 @@
 
 services:
   xray:
-    image: "${XRAY_IMAGE:-ghcr.io/xtls/xray-core:26.5.3}"
+    image: "${XRAY_IMAGE:-ghcr.io/xtls/xray-core:26.6.1}"
     container_name: xray
     restart: unless-stopped
     command: ["run", "-config", "/etc/xray/config.json"]

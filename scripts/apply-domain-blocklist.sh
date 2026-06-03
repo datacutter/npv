@@ -11,8 +11,24 @@ fi
 source .env
 
 ENABLE_BLOCKLIST=${ENABLE_DOMAIN_BLOCKLIST:-false}
+XRAY_IMAGE=${XRAY_IMAGE:-ghcr.io/xtls/xray-core:26.6.1}
 BLOCKLIST_FILE="data/blocked_domains.txt"
 CONFIG_FILE="xray/config.json"
+
+validate_xray_config() {
+    local config_name=${1:-config.json}
+
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "[!] Docker is not available; skipping Xray config validation."
+        return 0
+    fi
+
+    if [[ "$XRAY_IMAGE" == ghcr.io/xtls/xray-core:* ]]; then
+        docker run --rm -v "$(pwd)/xray:/etc/xray:ro" "$XRAY_IMAGE" run -test -config "/etc/xray/${config_name}" >/dev/null
+    else
+        docker run --rm -v "$(pwd)/xray:/etc/xray:ro" "$XRAY_IMAGE" xray run -test -config "/etc/xray/${config_name}" >/dev/null
+    fi
+}
 
 if [ "$ENABLE_BLOCKLIST" != "true" ]; then
     echo "Domain blocklist is disabled in .env (ENABLE_DOMAIN_BLOCKLIST=$ENABLE_BLOCKLIST)."
@@ -34,8 +50,9 @@ echo "======================================"
 echo " Applying Domain Blocklist to Xray    "
 echo "======================================"
 
-# Read domains, ignore empty lines and comments, format as "domain:example.com"
-DOMAINS_JSON=$(grep -v '^\s*$' "$BLOCKLIST_FILE" | grep -v '^#' | sed 's/^/domain:/g' | jq -R . | jq -s .)
+# Read domains, ignore empty lines and comments, format as "domain:example.com".
+# awk exits successfully on an empty list; grep under pipefail would not.
+DOMAINS_JSON=$(awk 'NF && $0 !~ /^#/ { print "domain:" $0 }' "$BLOCKLIST_FILE" | jq -R . | jq -s .)
 
 if [ "$DOMAINS_JSON" == "[]" ] || [ -z "$DOMAINS_JSON" ]; then
     echo "Blocklist is empty. Removing any existing routing rule..."
@@ -45,20 +62,28 @@ fi
 
 # Reset existing rule to avoid duplicates
 TMP_FILE=$(mktemp)
+TMP_CONFIG=$(mktemp xray/config.json.blocklist.XXXXXX)
+cleanup() {
+    rm -f "$TMP_FILE" "$TMP_CONFIG"
+}
+trap cleanup EXIT
+
 jq 'del(.routing.rules[] | select(.tag == "domain-blocklist"))' "$CONFIG_FILE" > "$TMP_FILE"
 
 # Inject new rule at the top of the routing rules
 jq --argjson domains "$DOMAINS_JSON" \
    '.routing.rules = [{"type": "field", "outboundTag": "block", "domain": $domains, "tag": "domain-blocklist"}] + .routing.rules' \
-   "$TMP_FILE" > "${TMP_FILE}.new"
-
-mv "${TMP_FILE}.new" "$CONFIG_FILE"
-rm -f "$TMP_FILE"
+   "$TMP_FILE" > "$TMP_CONFIG"
 
 echo "[*] Injected Xray routing rules for $(echo "$DOMAINS_JSON" | jq 'length') domains."
+echo "[*] Validating Xray config after blocklist injection..."
+validate_xray_config "$(basename "$TMP_CONFIG")"
+
+mv "$TMP_CONFIG" "$CONFIG_FILE"
+rm -f "$TMP_FILE"
 
 # Check if Xray container is running, if so, restart it to apply
-if docker ps --format '{{.Names}}' | grep -Eq "^xray$"; then
+if command -v docker >/dev/null 2>&1 && docker ps --format '{{.Names}}' | grep -Eq "^xray$"; then
     echo "[*] Restarting Xray container to apply routing changes..."
     docker restart xray
 fi

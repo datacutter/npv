@@ -3,20 +3,31 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+# shellcheck disable=SC1091
 source .env
-XRAY_IMAGE=${XRAY_IMAGE:-ghcr.io/xtls/xray-core:26.5.3}
+XRAY_IMAGE=${XRAY_IMAGE:-ghcr.io/xtls/xray-core:26.6.1}
 
 validate_xray_config() {
+    local config_name=${1:-config.json}
+
     if [[ "$XRAY_IMAGE" == ghcr.io/xtls/xray-core:* ]]; then
-        docker run --rm -v "$(pwd)/xray:/etc/xray:ro" "$XRAY_IMAGE" run -test -config /etc/xray/config.json >/dev/null 2>&1
+        docker run --rm -v "$(pwd)/xray:/etc/xray:ro" "$XRAY_IMAGE" run -test -config "/etc/xray/${config_name}" >/dev/null 2>&1
     else
-        docker run --rm -v "$(pwd)/xray:/etc/xray:ro" "$XRAY_IMAGE" xray run -test -config /etc/xray/config.json >/dev/null 2>&1
+        docker run --rm -v "$(pwd)/xray:/etc/xray:ro" "$XRAY_IMAGE" xray run -test -config "/etc/xray/${config_name}" >/dev/null 2>&1
     fi
 }
 
 TEMPLATE="xray/config.template.json"
 TARGET="xray/config.json"
+TMP_TARGET=$(mktemp xray/config.json.tmp.XXXXXX)
 USERS_FILE="data/users.json"
+
+cleanup() {
+    if [ -n "${TMP_TARGET:-}" ] && [ -f "$TMP_TARGET" ]; then
+        rm -f "$TMP_TARGET"
+    fi
+}
+trap cleanup EXIT
 
 if [ ! -f "$TEMPLATE" ]; then
     echo "Error: $TEMPLATE not found!"
@@ -25,6 +36,20 @@ fi
 
 if [ ! -f "$USERS_FILE" ]; then
     echo "[]" > "$USERS_FILE"
+fi
+
+if [ -z "${REALITY_DEST:-}" ] || [ -z "${REALITY_SERVER_NAME:-}" ]; then
+    echo "Error: REALITY_DEST and REALITY_SERVER_NAME must be set in .env."
+    exit 1
+fi
+
+if [ -z "${XRAY_PRIVATE_KEY:-}" ] || [ -z "${XRAY_SHORT_ID:-}" ]; then
+    echo "Error: XRAY_PRIVATE_KEY and XRAY_SHORT_ID must be set. Run 'make regenerate-secrets'."
+    exit 1
+fi
+
+if [ "${SKIP_REALITY_TARGET_CHECK:-false}" != "true" ]; then
+    bash scripts/check-reality-target.sh --warn-only "$REALITY_DEST" "$REALITY_SERVER_NAME"
 fi
 
 # Extract active clients and transform them for Xray config format
@@ -41,7 +66,8 @@ jq --argjson clients "$ACTIVE_CLIENTS" \
    '.inbounds |= map(
       if .protocol == "vless" and (.streamSettings.security // "") == "reality" then
         .settings.clients = $clients |
-        .streamSettings.realitySettings.dest = $dest |
+        .streamSettings.realitySettings.target = $dest |
+        del(.streamSettings.realitySettings.dest) |
         .streamSettings.realitySettings.serverNames = [$serverName] |
         .streamSettings.realitySettings.privateKey = $privateKey |
         .streamSettings.realitySettings.shortIds = [$shortId]
@@ -49,13 +75,16 @@ jq --argjson clients "$ACTIVE_CLIENTS" \
         .
       end
     )' \
-    "$TEMPLATE" > "$TARGET"
+    "$TEMPLATE" > "$TMP_TARGET"
 
 echo "[*] Validating Xray config..."
-if validate_xray_config; then
+if validate_xray_config "$(basename "$TMP_TARGET")"; then
+    mv "$TMP_TARGET" "$TARGET"
     echo "[+] Config is valid."
 else
-    echo "[-] Config validation FAILED. Rolling back might be needed."
+    rm -f "$TMP_TARGET"
+    echo "[-] Config validation FAILED. Not applying this config."
+    exit 1
 fi
 
 # Apply Domain Blocklist if enabled (this modifies config.json inside)

@@ -9,7 +9,8 @@ if [ "${1:-}" == "--force" ]; then
 fi
 
 source .env
-XRAY_IMAGE=${XRAY_IMAGE:-ghcr.io/xtls/xray-core:26.5.3}
+SERVER_IP=${SERVER_IP:-YOUR_SERVER_IP}
+XRAY_IMAGE=${XRAY_IMAGE:-ghcr.io/xtls/xray-core:26.6.1}
 
 run_xray_image() {
     if [[ "$XRAY_IMAGE" == ghcr.io/xtls/xray-core:* ]]; then
@@ -19,12 +20,36 @@ run_xray_image() {
     fi
 }
 
+set_env() {
+    local key=$1
+    local value=$2
+    local tmp
+    tmp=$(mktemp)
+
+    awk -v key="$key" -v value="$value" '
+        BEGIN { found = 0 }
+        $0 ~ "^" key "=" {
+            print key "=" value
+            found = 1
+            next
+        }
+        { print }
+        END {
+            if (found == 0) {
+                print key "=" value
+            }
+        }
+    ' .env > "$tmp"
+
+    mv "$tmp" .env
+}
+
 UPDATE_ENV=0
 
 # Server IP
 if [ "$SERVER_IP" == "YOUR_SERVER_IP" ]; then
     SERVER_IP=$(curl -s ipv4.icanhazip.com || echo "YOUR_SERVER_IP")
-    sed -i "s/YOUR_SERVER_IP/$SERVER_IP/g" .env
+    set_env SERVER_IP "$SERVER_IP"
     echo "[+] Server IP updated."
 fi
 
@@ -37,10 +62,33 @@ if [ -z "${XRAY_PRIVATE_KEY:-}" ] || [ "$FORCE" -eq 1 ]; then
         exit 1
     }
 
-    # Format: PrivateKey: <key>
-    PRIV=$(echo "$KEYS" | grep "PrivateKey:" | awk '{print $2}' | tr -d '\r')
-    # Format: Password (PublicKey): <key>
-    PUB=$(echo "$KEYS" | grep "PublicKey):" | awk '{print $3}' | tr -d '\r')
+    PRIV=$(awk -F: '
+        {
+            key = tolower($1)
+            if (key ~ /private[[:space:]]*key|privatekey/) {
+                value = $2
+                gsub(/\r/, "", value)
+                gsub(/^[ \t]+|[ \t]+$/, "", value)
+                print value
+                exit
+            }
+        }
+    ' <<<"$KEYS")
+
+    # New Xray versions call the client-side public key "Password".
+    # Older builds may print "PublicKey" or "Password (PublicKey)".
+    PUB=$(awk -F: '
+        {
+            key = tolower($1)
+            if (key ~ /password|public[[:space:]]*key|publickey/) {
+                value = $2
+                gsub(/\r/, "", value)
+                gsub(/^[ \t]+|[ \t]+$/, "", value)
+                print value
+                exit
+            }
+        }
+    ' <<<"$KEYS")
 
     if [ -z "$PRIV" ] || [ -z "$PUB" ]; then
         echo "Error: Could not parse Xray keys from output. Unexpected format."
@@ -49,14 +97,14 @@ if [ -z "${XRAY_PRIVATE_KEY:-}" ] || [ "$FORCE" -eq 1 ]; then
         exit 1
     fi
 
-    sed -i "s|^XRAY_PRIVATE_KEY=.*|XRAY_PRIVATE_KEY=$PRIV|g" .env
-    sed -i "s|^XRAY_PUBLIC_KEY=.*|XRAY_PUBLIC_KEY=$PUB|g" .env
+    set_env XRAY_PRIVATE_KEY "$PRIV"
+    set_env XRAY_PUBLIC_KEY "$PUB"
     UPDATE_ENV=1
 fi
 
 if [ -z "${XRAY_SHORT_ID:-}" ] || [ "$FORCE" -eq 1 ]; then
     SID=$(openssl rand -hex 8)
-    sed -i "s|^XRAY_SHORT_ID=.*|XRAY_SHORT_ID=$SID|g" .env
+    set_env XRAY_SHORT_ID "$SID"
     UPDATE_ENV=1
 fi
 

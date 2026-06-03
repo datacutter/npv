@@ -58,8 +58,10 @@ if [ ! -f "$USERS_FILE" ]; then
 fi
 
 jq -r '.[] | .username' "$USERS_FILE" | while read -r username; do
-    up=$(echo "$STAT_ENTRIES" | jq -r ".[] | select(.name == \"user>>>${username}>>>traffic>>>uplink\") | .value")
-    down=$(echo "$STAT_ENTRIES" | jq -r ".[] | select(.name == \"user>>>${username}>>>traffic>>>downlink\") | .value")
+    uplink_key="user>>>${username}>>>traffic>>>uplink"
+    downlink_key="user>>>${username}>>>traffic>>>downlink"
+    up=$(echo "$STAT_ENTRIES" | jq -r --arg name "$uplink_key" '.[] | select(.name == $name) | .value')
+    down=$(echo "$STAT_ENTRIES" | jq -r --arg name "$downlink_key" '.[] | select(.name == $name) | .value')
     
     [ -z "$up" ] && up=0
     [ -z "$down" ] && down=0

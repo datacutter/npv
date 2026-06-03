@@ -24,7 +24,19 @@ if ! docker ps --format '{{.Names}}' | grep -Eq "^xray$"; then
 fi
 echo "[+] Xray container is running."
 
-for port in 443 8443; do
+CONFIG_FILE="xray/config.json"
+if [ ! -f "$CONFIG_FILE" ]; then
+    echo "[!] ERROR: $CONFIG_FILE not found."
+    exit 1
+fi
+
+PORTS=$(jq -r '.inbounds[] | select(.protocol == "vless") | .port' "$CONFIG_FILE" | sort -n -u)
+if [ -z "$PORTS" ]; then
+    echo "[!] ERROR: No VLESS inbound ports found in $CONFIG_FILE."
+    exit 1
+fi
+
+for port in $PORTS; do
     # We test with nc if the container answers locally.
     # Using a temp alpine image because the host may not have nc.
     if docker run --rm --network container:xray alpine sh -c "nc -z 127.0.0.1 $port"; then

@@ -3,7 +3,7 @@
 Это полнофункциональный, self-hosted VPN для обхода блокировок. Содержит только самое необходимое: Xray Core, VLESS, XTLS Reality протокол, и bash-скрипты для управления доступами. Проект создан в парадигме Docker Compose без сложных зависимостей.
 
 ## Главные фичи
-* **Xray VLESS+Reality** (основной порт `443` + запасной `8443` на том же Reality-конфиге). Никаких отпечатков классического VPN.
+* **Xray VLESS+Reality+Vision** (основной порт `443` + запасной `8443` на том же Reality-конфиге). Никаких отпечатков классического WireGuard/OpenVPN.
 * **Multi-User**: У каждого клиента свой UUID. Ограничений на количество устройств/пользователей нет.
 * **Статистика**: Xray API снимает трафик для каждого пользователя отдельно!
 * **Управление скриптами**: Добавление, отзыв пользователей и обновление Xray через простые команды (без тяжелых веб-админок).
@@ -79,11 +79,7 @@ cd /root/vpn
 Запустите скрипт автоматической инициализации. **Это нужно сделать только 1 раз.** Он сгенерирует Reality ключи, UUID для внутренних нужд, `.env` конфиг и "отрендерит" готовый к запуску `config.json` для Xray.
 
 ```bash
-apt install make 
-```
-
-
-```bash
+sudo apt install -y make
 make init
 ```
 
@@ -94,14 +90,60 @@ make up
 
 Всё! Ядро VPN (контейнер Xray) развернуто и ждет ваших клиентов на портах `443` и `8443`.
 
-Если `443/tcp` режется или деградирует у части провайдеров, этот же Reality-конфиг уже будет доступен и на `8443/tcp`.
+Если `443/tcp` режется только как порт, этот же Reality-конфиг доступен на `8443/tcp`. Если блокируется IP/подсеть VPS или конкретная Reality-связка `SNI + public key + shortId`, запасной порт не поможет — нужна ротация Reality-параметров или перенос на другой IP.
 
 ### Обновление Xray Core на сервере
 Для существующей установки можно выполнить обновление Xray Core и одновременно добавить запасной порт:
 ```bash
 make upgrade-xray
 ```
-Команда обновит `XRAY_IMAGE` до официального образа `ghcr.io/xtls/xray-core:26.5.3`, добавит `XRAY_PORT_ALT=8443` в `.env`, перерендерит конфиг, подтянет новый образ и прогонит healthcheck.
+Команда обновит `XRAY_IMAGE` до официального образа `ghcr.io/xtls/xray-core:26.6.1`, добавит `XRAY_PORT_ALT=8443` в `.env`, перерендерит конфиг, подтянет новый образ и прогонит healthcheck.
+
+Если `make` недоступен, тот же сценарий вручную:
+```bash
+docker compose pull xray
+bash scripts/render-config.sh
+docker compose up -d xray
+bash scripts/healthcheck.sh
+```
+
+### Если VPN уже блокируется из России
+В 2026 году блокировка часто идет не только по протоколу, но и по IP/подсетям VPS и конкретным Reality-параметрам. Минимальный порядок действий:
+```bash
+make upgrade-xray
+make rotate-reality DEST=www.microsoft.com:443 SNI=www.microsoft.com
+make client-config USER=alice
+```
+
+После `rotate-reality` старые клиентские ссылки перестают работать, потому что меняются Reality `pbk`, `sid` и, при необходимости, `SNI`. Раздайте новые ссылки всем активным пользователям. Если после ротации не работает ни `443`, ни `8443`, вероятнее всего заблокирован IP или подсеть VPS — поднимайте сервер на новом IP и повторяйте `make init`/`make add-user`.
+
+Ручная ротация без `make`:
+```bash
+DEST=www.microsoft.com:443
+SNI=www.microsoft.com
+bash scripts/check-reality-target.sh "$DEST" "$SNI"
+sed -i "s|^REALITY_DEST=.*|REALITY_DEST=${DEST}|g" .env
+sed -i "s|^REALITY_SERVER_NAME=.*|REALITY_SERVER_NAME=${SNI}|g" .env
+bash scripts/generate-secrets.sh --force
+bash scripts/render-config.sh
+docker compose up -d xray
+bash scripts/healthcheck.sh
+```
+
+Проверить текущий Reality target без ротации:
+```bash
+make check-reality-target
+```
+
+Подробный manual-runbook: [`docs/MANUAL_UPDATE.md`](docs/MANUAL_UPDATE.md).
+
+### Дополнительные рекомендации
+* Держите Xray Core и клиентские приложения обновленными одновременно. Reality/Vision часто ломается не из-за сервера, а из-за несовместимости старого клиента и нового профиля.
+* Не используйте WireGuard/OpenVPN как основной вариант для России: они быстрее детектируются DPI.
+* Основной порт оставляйте `443/tcp`. `8443/tcp` используйте только как fallback, он хуже похож на обычный HTTPS.
+* На каждое устройство выдавайте отдельного пользователя/UUID. При утечке ссылки проще отозвать один UUID, чем ротировать весь сервер.
+* Reality target выбирайте из крупных HTTPS-сайтов с TLS 1.3 и HTTP/2. Проверяйте через `make check-reality-target`.
+* Если healthcheck на VPS успешен, но несколько пользователей из России не подключаются, вероятнее всего проблема не в Xray-конфиге, а в IP/подсети VPS.
 
 ---
 

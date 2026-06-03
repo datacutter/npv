@@ -51,7 +51,7 @@
         "security": "reality",
         "realitySettings": {
           "show": false,
-          "dest": "REALITY_DEST_PLACEHOLDER",
+          "target": "REALITY_DEST_PLACEHOLDER",
           "xver": 0,
           "serverNames": [
             "REALITY_SERVERNAME_PLACEHOLDER"
@@ -81,7 +81,7 @@
         "security": "reality",
         "realitySettings": {
           "show": false,
-          "dest": "REALITY_DEST_PLACEHOLDER",
+          "target": "REALITY_DEST_PLACEHOLDER",
           "xver": 0,
           "serverNames": [
             "REALITY_SERVERNAME_PLACEHOLDER"

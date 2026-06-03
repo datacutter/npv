@@ -9,18 +9,23 @@ if [ -z "$USERNAME" ]; then
     exit 1
 fi
 
+if ! [[ "$USERNAME" =~ ^[A-Za-z0-9._-]{1,64}$ ]]; then
+    echo "Error: username must be 1-64 chars and contain only letters, digits, dot, underscore, or dash."
+    exit 1
+fi
+
 USERS_FILE="data/users.json"
 
 # Check if user already exists
-if jq -e ".[] | select(.username == \"$USERNAME\")" "$USERS_FILE" > /dev/null; then
-    ACTIVE=$(jq -r ".[] | select(.username == \"$USERNAME\") | .active" "$USERS_FILE")
+if jq -e --arg username "$USERNAME" '.[] | select(.username == $username)' "$USERS_FILE" > /dev/null; then
+    ACTIVE=$(jq -r --arg username "$USERNAME" '.[] | select(.username == $username) | .active' "$USERS_FILE")
     if [ "$ACTIVE" == "true" ]; then
         echo "User '$USERNAME' already exists and is active."
         exit 0
     else
         echo "User '$USERNAME' exists but is deactivated. Reactivating..."
         TMP_FILE=$(mktemp)
-        jq "map((select(.username == \"$USERNAME\") | .active) = true)" "$USERS_FILE" > "$TMP_FILE"
+        jq --arg username "$USERNAME" 'map((select(.username == $username) | .active) = true)' "$USERS_FILE" > "$TMP_FILE"
         mv "$TMP_FILE" "$USERS_FILE"
     fi
 else
@@ -31,7 +36,11 @@ else
     echo "[*] Generating UUID for $USERNAME: $UUID"
     
     TMP_FILE=$(mktemp)
-    jq ". += [{\"username\": \"$USERNAME\", \"uuid\": \"$UUID\", \"created_at\": \"$DATE_STR\", \"active\": true}]" "$USERS_FILE" > "$TMP_FILE"
+    jq --arg username "$USERNAME" \
+       --arg uuid "$UUID" \
+       --arg created_at "$DATE_STR" \
+       '. += [{username: $username, uuid: $uuid, created_at: $created_at, active: true}]' \
+       "$USERS_FILE" > "$TMP_FILE"
     mv "$TMP_FILE" "$USERS_FILE"
 fi
 

@@ -1,17 +1,24 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 if [ ! -f ".env" ]; then
     echo "Error: .env not found."
     exit 1
 fi
-export $(grep -v '^#' .env | xargs)
 
-CLIENT_NAME=$1
+# shellcheck disable=SC1091
+source .env
+
+CLIENT_NAME=${1:-}
 if [ -z "$CLIENT_NAME" ]; then
     echo "Usage: ./get-wg-client.sh <client_name>"
     CLIENT_NAME="client1"
     echo "Defaulting to client name: $CLIENT_NAME"
+fi
+
+if ! [[ "$CLIENT_NAME" =~ ^[A-Za-z0-9._-]{1,64}$ ]]; then
+    echo "Error: client name must be 1-64 chars and contain only letters, digits, dot, underscore, or dash."
+    exit 1
 fi
 
 CLIENT_FILE="clients/${CLIENT_NAME}.conf"

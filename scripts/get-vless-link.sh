@@ -1,29 +1,23 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-if [ ! -f ".env" ]; then
-    echo "Error: .env not found. Please run init.sh first."
+cd "$(dirname "$0")/.."
+
+USERNAME=${1:-}
+USERS_FILE="data/users.json"
+
+if [ -z "$USERNAME" ]; then
+    if [ ! -f "$USERS_FILE" ]; then
+        echo "Usage: bash scripts/get-vless-link.sh <username>"
+        exit 1
+    fi
+
+    USERNAME=$(jq -r '.[] | select(.active == true) | .username' "$USERS_FILE" | head -n 1)
+fi
+
+if [ -z "$USERNAME" ] || [ "$USERNAME" = "null" ]; then
+    echo "No active users found. Create one first: make add-user USER=alice"
     exit 1
 fi
 
-export $(grep -v '^#' .env | xargs)
-XRAY_PORT_ALT=${XRAY_PORT_ALT:-8443}
-
-URLEncoded_REALITY_SERVER_NAME=$(echo "$REALITY_SERVER_NAME" | sed 's/ /%20/g')
-
-PRIMARY_VLESS_LINK="vless://${XRAY_UUID}@${SERVER_IP}:${XRAY_PORT}?security=reality&encryption=none&pbk=${XRAY_PUBLIC_KEY}&headerType=none&fp=chrome&type=tcp&flow=xtls-rprx-vision&sni=${URLEncoded_REALITY_SERVER_NAME}&sid=${XRAY_SHORT_ID}#Xray_Reality"
-ALT_VLESS_LINK="vless://${XRAY_UUID}@${SERVER_IP}:${XRAY_PORT_ALT}?security=reality&encryption=none&pbk=${XRAY_PUBLIC_KEY}&headerType=none&fp=chrome&type=tcp&flow=xtls-rprx-vision&sni=${URLEncoded_REALITY_SERVER_NAME}&sid=${XRAY_SHORT_ID}#Xray_Reality_8443"
-
-echo "========================================="
-echo "      YOUR PRIMARY VLESS REALITY LINK    "
-echo "========================================="
-echo ""
-echo "$PRIMARY_VLESS_LINK"
-echo ""
-echo "========================================="
-echo "      YOUR FALLBACK VLESS REALITY LINK   "
-echo "========================================="
-echo ""
-echo "$ALT_VLESS_LINK"
-echo ""
-echo "========================================="
+bash scripts/print-client-config.sh "$USERNAME"
