@@ -190,6 +190,14 @@ bash scripts/list-users.sh
 bash scripts/stats.sh
 ```
 
+Полностью очистить список пользователей:
+
+```bash
+make reset-users CONFIRM=YES
+```
+
+Команда создаст backup `data/users.json`, запишет пустой массив `[]` и перерендерит Xray config.
+
 Посмотреть логи:
 
 ```bash

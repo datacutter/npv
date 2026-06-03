@@ -62,7 +62,7 @@ fi
 
 # Reset existing rule to avoid duplicates
 TMP_FILE=$(mktemp)
-TMP_CONFIG=$(mktemp xray/config.json.blocklist.XXXXXX)
+TMP_CONFIG=$(mktemp xray/config.blocklist.XXXXXX.json)
 cleanup() {
     rm -f "$TMP_FILE" "$TMP_CONFIG"
 }
@@ -74,6 +74,10 @@ jq 'del(.routing.rules[] | select(.tag == "domain-blocklist"))' "$CONFIG_FILE" >
 jq --argjson domains "$DOMAINS_JSON" \
    '.routing.rules = [{"type": "field", "outboundTag": "block", "domain": $domains, "tag": "domain-blocklist"}] + .routing.rules' \
    "$TMP_FILE" > "$TMP_CONFIG"
+
+# Xray inside the container may run as a non-root user; temporary config
+# files must be world-readable for validation through the bind mount.
+chmod 644 "$TMP_CONFIG"
 
 echo "[*] Injected Xray routing rules for $(echo "$DOMAINS_JSON" | jq 'length') domains."
 echo "[*] Validating Xray config after blocklist injection..."

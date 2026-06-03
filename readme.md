@@ -164,6 +164,12 @@ make add-user USER=alice
 make list-users
 ```
 
+### Полностью очистить всех пользователей
+Команда создаст backup `data/users.json` и очистит весь список:
+```bash
+make reset-users CONFIRM=YES
+```
+
 ### Посмотреть статистику (Uplink/Downlink)
 Узнайте, кто и сколько тратит трафика в человекочитаемом виде (KB/MB/GB):
 ```bash

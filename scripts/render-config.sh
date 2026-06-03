@@ -11,15 +11,15 @@ validate_xray_config() {
     local config_name=${1:-config.json}
 
     if [[ "$XRAY_IMAGE" == ghcr.io/xtls/xray-core:* ]]; then
-        docker run --rm -v "$(pwd)/xray:/etc/xray:ro" "$XRAY_IMAGE" run -test -config "/etc/xray/${config_name}" >/dev/null 2>&1
+        docker run --rm -v "$(pwd)/xray:/etc/xray:ro" "$XRAY_IMAGE" run -test -config "/etc/xray/${config_name}"
     else
-        docker run --rm -v "$(pwd)/xray:/etc/xray:ro" "$XRAY_IMAGE" xray run -test -config "/etc/xray/${config_name}" >/dev/null 2>&1
+        docker run --rm -v "$(pwd)/xray:/etc/xray:ro" "$XRAY_IMAGE" xray run -test -config "/etc/xray/${config_name}"
     fi
 }
 
 TEMPLATE="xray/config.template.json"
 TARGET="xray/config.json"
-TMP_TARGET=$(mktemp xray/config.json.tmp.XXXXXX)
+TMP_TARGET=$(mktemp xray/config.XXXXXX.json)
 USERS_FILE="data/users.json"
 
 cleanup() {
@@ -66,8 +66,8 @@ jq --argjson clients "$ACTIVE_CLIENTS" \
    '.inbounds |= map(
       if .protocol == "vless" and (.streamSettings.security // "") == "reality" then
         .settings.clients = $clients |
-        .streamSettings.realitySettings.target = $dest |
-        del(.streamSettings.realitySettings.dest) |
+        .streamSettings.realitySettings.dest = $dest |
+        del(.streamSettings.realitySettings.target) |
         .streamSettings.realitySettings.serverNames = [$serverName] |
         .streamSettings.realitySettings.privateKey = $privateKey |
         .streamSettings.realitySettings.shortIds = [$shortId]
@@ -76,6 +76,10 @@ jq --argjson clients "$ACTIVE_CLIENTS" \
       end
     )' \
     "$TEMPLATE" > "$TMP_TARGET"
+
+# Xray inside the container may run as a non-root user; temporary config
+# files must be world-readable for validation through the bind mount.
+chmod 644 "$TMP_TARGET"
 
 echo "[*] Validating Xray config..."
 if validate_xray_config "$(basename "$TMP_TARGET")"; then

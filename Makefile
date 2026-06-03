@@ -1,4 +1,4 @@
-.PHONY: init up down restart logs status render add-user revoke-user list-users client-config stats healthcheck check-reality-target rotate-reality regenerate-secrets firewall-apply firewall-reset firewall-status tune-kernel upgrade-xray
+.PHONY: init up down restart logs status render add-user revoke-user reset-users list-users client-config stats healthcheck check-reality-target rotate-reality regenerate-secrets firewall-apply firewall-reset firewall-status tune-kernel upgrade-xray
 
 init:
 	@bash scripts/init.sh
@@ -44,6 +44,9 @@ add-user:
 
 revoke-user:
 	@bash scripts/revoke-user.sh $(USER)
+
+reset-users:
+	@bash scripts/reset-users.sh $(if $(filter YES,$(CONFIRM)),--yes,)
 
 list-users:
 	@bash scripts/list-users.sh
