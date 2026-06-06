@@ -97,6 +97,39 @@
         "destOverride": ["http", "tls", "quic"],
         "routeOnly": true
       }
+    },
+    {
+      "port": 9443,
+      "protocol": "vless",
+      "tag": "vless-xhttp",
+      "settings": {
+        "clients": [],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "xhttp",
+        "security": "reality",
+        "realitySettings": {
+          "show": false,
+          "dest": "REALITY_DEST_PLACEHOLDER",
+          "xver": 0,
+          "serverNames": [
+            "REALITY_SERVERNAME_PLACEHOLDER"
+          ],
+          "privateKey": "PRIVATE_KEY_PLACEHOLDER",
+          "shortIds": [
+            "SHORT_ID_PLACEHOLDER"
+          ]
+        },
+        "xhttpSettings": {
+          "path": "XHTTP_PATH_PLACEHOLDER"
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls", "quic"],
+        "routeOnly": true
+      }
     }
   ],
   "outbounds": [

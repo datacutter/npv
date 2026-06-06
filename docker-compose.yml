@@ -8,6 +8,7 @@ services:
     ports:
       - "${XRAY_PORT}:443/tcp"
       - "${XRAY_PORT_ALT:-8443}:8443/tcp"
+      - "${XRAY_PORT_XHTTP:-9443}:9443/tcp"
     volumes:
       - ./xray/config.json:/etc/xray/config.json:ro
       - ./data:/etc/xray/data

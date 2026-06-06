@@ -108,6 +108,12 @@ if [ -z "${XRAY_SHORT_ID:-}" ] || [ "$FORCE" -eq 1 ]; then
     UPDATE_ENV=1
 fi
 
+if [ -z "${XHTTP_PATH:-}" ] || [ "${XHTTP_PATH:-}" = "/__CHANGE_ME_XHTTP_PATH__" ] || [ "$FORCE" -eq 1 ]; then
+    XHTTP_RANDOM_PATH="/assets/$(openssl rand -hex 6)"
+    set_env XHTTP_PATH "$XHTTP_RANDOM_PATH"
+    UPDATE_ENV=1
+fi
+
 if [ "$UPDATE_ENV" -eq 1 ]; then
     echo "[+] Secrets generated successfully."
 else

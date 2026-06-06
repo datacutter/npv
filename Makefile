@@ -1,4 +1,4 @@
-.PHONY: init up down restart logs status render add-user revoke-user reset-users list-users client-config stats healthcheck check-reality-target rotate-reality regenerate-secrets firewall-apply firewall-reset firewall-status tune-kernel upgrade-xray
+.PHONY: init up down restart logs status render add-user revoke-user reset-users list-users client-config stats healthcheck diagnose check-reality-target rotate-reality regenerate-secrets firewall-apply firewall-reset firewall-status tune-kernel upgrade-xray
 
 init:
 	@bash scripts/init.sh
@@ -59,6 +59,9 @@ stats:
 
 healthcheck:
 	@bash scripts/healthcheck.sh
+
+diagnose:
+	@bash scripts/diagnose-connectivity.sh
 
 check-reality-target:
 	@bash scripts/check-reality-target.sh

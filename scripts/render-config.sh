@@ -6,6 +6,8 @@ cd "$(dirname "$0")/.."
 # shellcheck disable=SC1091
 source .env
 XRAY_IMAGE=${XRAY_IMAGE:-ghcr.io/xtls/xray-core:26.6.1}
+XHTTP_PATH=${XHTTP_PATH:-/assets}
+XHTTP_MODE=${XHTTP_MODE:-auto}
 
 validate_xray_config() {
     local config_name=${1:-config.json}
@@ -48,29 +50,54 @@ if [ -z "${XRAY_PRIVATE_KEY:-}" ] || [ -z "${XRAY_SHORT_ID:-}" ]; then
     exit 1
 fi
 
+if [[ "$XHTTP_PATH" != /* ]]; then
+    echo "Error: XHTTP_PATH must start with '/'. Current value: $XHTTP_PATH"
+    exit 1
+fi
+
 if [ "${SKIP_REALITY_TARGET_CHECK:-false}" != "true" ]; then
     bash scripts/check-reality-target.sh --warn-only "$REALITY_DEST" "$REALITY_SERVER_NAME"
 fi
 
-# Extract active clients and transform them for Xray config format
-ACTIVE_CLIENTS=$(jq '[.[] | select(.active == true) | {id: .uuid, email: .username, flow: "xtls-rprx-vision"}]' "$USERS_FILE")
+# Extract active clients and transform them for Xray config format.
+# Vision flow is valid for RAW/TCP + REALITY. XHTTP clients intentionally
+# omit flow to avoid advertising an incompatible transport/flow combination.
+ACTIVE_TCP_CLIENTS=$(jq '[.[] | select(.active == true) | {id: .uuid, email: .username, flow: "xtls-rprx-vision"}]' "$USERS_FILE")
+ACTIVE_XHTTP_CLIENTS=$(jq '[.[] | select(.active == true) | {id: .uuid, email: .username}]' "$USERS_FILE")
 
 echo "[*] Rendering config..."
 
 # We inject the clients array and replace placeholders
-jq --argjson clients "$ACTIVE_CLIENTS" \
+jq --argjson tcpClients "$ACTIVE_TCP_CLIENTS" \
+   --argjson xhttpClients "$ACTIVE_XHTTP_CLIENTS" \
    --arg dest "$REALITY_DEST" \
    --arg serverName "$REALITY_SERVER_NAME" \
    --arg privateKey "$XRAY_PRIVATE_KEY" \
    --arg shortId "$XRAY_SHORT_ID" \
-   '.inbounds |= map(
+   --arg xhttpPath "$XHTTP_PATH" \
+   --arg xhttpMode "$XHTTP_MODE" \
+   '
+   def apply_reality:
+      .streamSettings.realitySettings.dest = $dest |
+      del(.streamSettings.realitySettings.target) |
+      .streamSettings.realitySettings.serverNames = [$serverName] |
+      .streamSettings.realitySettings.privateKey = $privateKey |
+      .streamSettings.realitySettings.shortIds = [$shortId];
+
+   .inbounds |= map(
       if .protocol == "vless" and (.streamSettings.security // "") == "reality" then
-        .settings.clients = $clients |
-        .streamSettings.realitySettings.dest = $dest |
-        del(.streamSettings.realitySettings.target) |
-        .streamSettings.realitySettings.serverNames = [$serverName] |
-        .streamSettings.realitySettings.privateKey = $privateKey |
-        .streamSettings.realitySettings.shortIds = [$shortId]
+        apply_reality |
+        if (.streamSettings.network // "tcp") == "xhttp" then
+          .settings.clients = $xhttpClients |
+          .streamSettings.xhttpSettings.path = $xhttpPath |
+          if $xhttpMode == "" then
+            del(.streamSettings.xhttpSettings.mode)
+          else
+            .streamSettings.xhttpSettings.mode = $xhttpMode
+          end
+        else
+          .settings.clients = $tcpClients
+        end
       else
         .
       end

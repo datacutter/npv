@@ -1,5 +1,7 @@
 # Xray VLESS + XTLS Reality (Multi-User)
 
+> Актуальный runbook для схемы `VLESS + REALITY + XHTTP`: [`docs/DEPLOYMENT_XHTTP.md`](docs/DEPLOYMENT_XHTTP.md).
+
 Это полнофункциональный, self-hosted VPN для обхода блокировок. Содержит только самое необходимое: Xray Core, VLESS, XTLS Reality протокол, и bash-скрипты для управления доступами. Проект создан в парадигме Docker Compose без сложных зависимостей.
 
 ## Главные фичи

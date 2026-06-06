@@ -29,7 +29,7 @@ else
 fi
 
 if [ -z "$DEST" ]; then
-    echo "Usage: make rotate-reality DEST=www.microsoft.com:443 SNI=www.microsoft.com"
+    echo "Usage: make rotate-reality DEST=www.apple.com:443 SNI=www.apple.com"
     exit 1
 fi
 
@@ -68,11 +68,27 @@ set_env REALITY_DEST "$DEST"
 set_env REALITY_SERVER_NAME "$SNI"
 
 if ! grep -q '^REALITY_FINGERPRINT=' .env; then
-    set_env REALITY_FINGERPRINT "chrome"
+    set_env REALITY_FINGERPRINT "edge"
+fi
+
+if ! grep -q '^REALITY_FINGERPRINTS=' .env; then
+    set_env REALITY_FINGERPRINTS "edge,firefox,safari,chrome,android,ios"
 fi
 
 if ! grep -q '^REALITY_SPIDER_X=' .env; then
     set_env REALITY_SPIDER_X "/"
+fi
+
+if ! grep -q '^XRAY_PORT_XHTTP=' .env; then
+    set_env XRAY_PORT_XHTTP "9443"
+fi
+
+if ! grep -q '^XHTTP_PATH=' .env; then
+    set_env XHTTP_PATH "/assets/$(openssl rand -hex 6)"
+fi
+
+if ! grep -q '^XHTTP_MODE=' .env; then
+    set_env XHTTP_MODE "auto"
 fi
 
 echo "[*] Regenerating Reality private/public key pair and short ID ..."

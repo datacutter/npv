@@ -5,6 +5,7 @@ cd "$(dirname "$0")/.."
 
 TARGET_IMAGE="ghcr.io/xtls/xray-core:26.6.1"
 TARGET_ALT_PORT="8443"
+TARGET_XHTTP_PORT="9443"
 
 ensure_env_default() {
     local key=$1
@@ -56,7 +57,11 @@ else
 fi
 
 ensure_env_default REALITY_FINGERPRINT "chrome"
+ensure_env_default REALITY_FINGERPRINTS "edge,firefox,safari,chrome,android,ios"
 ensure_env_default REALITY_SPIDER_X "/"
+ensure_env_default XRAY_PORT_XHTTP "$TARGET_XHTTP_PORT"
+ensure_env_default XHTTP_PATH "/assets/$(openssl rand -hex 6)"
+ensure_env_default XHTTP_MODE "auto"
 
 echo "[*] Re-rendering Xray config..."
 bash scripts/render-config.sh
@@ -74,5 +79,5 @@ echo ""
 echo "[!] Reminder: update client apps to the latest available release on each device."
 echo "    For Reality-based links this is important on Android/iPhone clients too."
 echo "[!] If the current server is already blocked in Russia, run:"
-echo "    make rotate-reality DEST=www.microsoft.com:443 SNI=www.microsoft.com"
+echo "    make rotate-reality DEST=www.apple.com:443 SNI=www.apple.com"
 echo "    Then re-issue links with: make client-config USER=<username>"
