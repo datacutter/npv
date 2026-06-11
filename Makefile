@@ -1,4 +1,4 @@
-.PHONY: init up down restart logs status render add-user revoke-user reset-users list-users client-config stats healthcheck diagnose check-reality-target rotate-reality regenerate-secrets firewall-apply firewall-reset firewall-status tune-kernel upgrade-xray
+.PHONY: init up down restart logs status render add-user revoke-user reset-users list-users client-config stats healthcheck diagnose check-reality-target check-ru rotate-reality regenerate-secrets firewall-apply firewall-reset firewall-status tune-kernel upgrade-xray
 
 init:
 	@bash scripts/init.sh
@@ -65,6 +65,9 @@ diagnose:
 
 check-reality-target:
 	@bash scripts/check-reality-target.sh
+
+check-ru:
+	@bash scripts/check-ru-reachability.sh $(IP)
 
 rotate-reality:
 	@bash scripts/rotate-reality.sh "$(DEST)" "$(SNI)"
